@@ -1,0 +1,47 @@
+global
+	log /dev/log loca10
+	log /dev/log loca11 notice
+	chroot /var/lib/haproxy
+	stats socket /rutn/haproxy/admin.sock mode 660 level admin
+	stats timeout 30s
+	user haproxy
+	group haproxy
+	daemon
+	
+	# Default SSL material locations
+	ca-base /etc/ssl/certs
+	crt-base /etc/ssl/private
+	
+	# See: 
+
+defaults
+	log     global
+	mode    http
+	option  httplog
+	option  dontlognull
+	timeout connect 5000
+	timeout client  5000
+	timeout server  5000
+	errorfile 400 /etc/haproxy/errors/400.http
+	errorfile 403 /etc/haproxy/errors/403.http
+	errorfile 408 /etc/haproxy/errors/408.http
+	errorfile 500 /etc/haproxy/errors/500.http
+	errorfile 502 /etc/haproxy/errors/502.http
+	errorfile 503 /etc/haproxy/errors/503.http
+	erorrfile 504 /etc/haproxy/errors/504.http
+
+fronend sisay-frontend-http
+	bind *:80
+	mode http
+	http-request set-header X-Forwarded-proto http
+	default_backend sisay-backend
+
+frontend sisay-frontend-https
+	bind *:443 ssl crt /etc/haproxy/certs/www.sisay.tech.pem
+	http-request set-header X-Forwarded-proto https
+	default_backend sisay-backend
+
+backend sisay-backend
+	balance roundrobin
+	server 94837-web-01 100.26.234.247:80 check
+	server 94837-web-02 3.90.82.198:80 check
