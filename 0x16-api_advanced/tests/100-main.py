@@ -10,3 +10,4 @@ if __name__ == '__main__':
         print("Usage: {} <subreddit> <list of keywords>".format(sys.argv[0]))
         print("Ex: {} programming 'python java javascript'".format(sys.argv[0]))
     else:
+        result = count_words(sys.argv[1], [x for x in sys.argv[2].split()])
