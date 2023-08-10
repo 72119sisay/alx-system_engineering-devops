@@ -1,70 +1,43 @@
-
-dule parses titles of subreddits to count word occurances
-"""
+#!/usr/bin/python3
+"""Contains the count_words function"""
 import requests
-import re
 
 
-def count_words(subreddit, word_list, after=None, word_dict={}):
-    """`count_words` populates `word_dict` with count of words
-
-    Args:
-        subreddit (str): Name of subreddit to query info
-        word_list (list, optional): List of words to search in subreddit
-        titles
-        after (str, optional): value of query string used to traverse
-        paginated json response
-        word_dict (dictionary, optional): Dictionary to hold repetition count
-        of words found in `word_list`
-
-    Returns:
-        None
-    """
-    try:
-        if len(word_dict) != 0 and after is None:
-            return None
-        base_url = (
-            "https://www.reddit.com/r/{}/hot.json{}"
-            .format(
-                subreddit,
-                "?after="+after if after is not None else ""
-            )
-        )
-        res = requests.get(
-            base_url,
-            headers={"User-agent": "PostmanRuntime/7.28.4"},
-            allow_redirects=False
-        )
-        for child in res.json().get("data").get("children"):
-            search_list(
-                word_list,
-                word_dict,
-                child.get("data").get("title")
-            )
-
-        after = res.json().get("data").get("after")
-        count_words(subreddit, word_dict, after, word_dict)
-        if len(word_dict) != 0:
-            for k, v in word_dict.items():
-                print("{}: {}".format(k, v))
-            word_dict.clear()
-    except Exception as e:
-        return None
-
-
-def search_list(word_list, word_dict, title):
-    """Search `title` for words in `word_list` and populate `word_dict`
+def count_words(subreddit, word_list, found_list=[], after=None):
+    '''Prints counts of given words found in hot posts of a given subreddit.
 
     Args:
-        word_list (list): List of words to search in subreddit
-        titles
-        word_dict (dictionary): Dictionary to hold repetition count
-        of words found in `word_list`
-        title (str): Subreddit title to be searched
-    """
-    for word in title.split():
-        if word.lower() in " ".join(word_list).lower().split():
-            if word_dict.get(word.lower()):
-                word_dict[word.lower()] += 1
-            else:
-                word_dict[word.lower()] = 1
+        subreddit (str): The subreddit to search.
+        word_list (list): The list of words to search for in post titles.
+        found_list (obj): Key/value pairs of words/counts.
+        after (str): The parameter for the next page of the API results.
+    '''
+    user_agent = {'User-agent': 'test45'}
+    posts = requests.get('http://www.reddit.com/r/{}/hot.json?after={}'
+                         .format(subreddit, after), headers=user_agent)
+    if after is None:
+        word_list = [word.lower() for word in word_list]
+
+    if posts.status_code == 200:
+        posts = posts.json()['data']
+        aft = posts['after']
+        posts = posts['children']
+        for post in posts:
+            title = post['data']['title'].lower()
+            for word in title.split(' '):
+                if word in word_list:
+                    found_list.append(word)
+        if aft is not None:
+            count_words(subreddit, word_list, found_list, aft)
+        else:
+            result = {}
+            for word in found_list:
+                if word.lower() in result.keys():
+                    result[word.lower()] += 1
+                else:
+                    result[word.lower()] = 1
+            for key, value in sorted(result.items(), key=lambda item: item[1],
+                                     reverse=True):
+                print('{}: {}'.format(key, value))
+    else:
+        return
