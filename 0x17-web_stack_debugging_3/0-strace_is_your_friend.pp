@@ -1,6 +1,6 @@
-# Puppet manifest to fix a 500 error in WordPress by replacing 'phpp' with 'php' in wp-settings.php file.
+# Puppet manifest to fix a bug in wp-setings.php
 
-exec { 'fixed-phpp':
-  command => "sudo sed -i 's/phpp/php/g' /var/www/html/wp-settings.php",
-  path    => '/bin';
+exec { 'fix the php extension issue':
+  command => 'sed -i s/phpp/php/g /var/www/html/wp-settings.php',
+  path    => '/usr/local/bin/:/bin/'
 }
