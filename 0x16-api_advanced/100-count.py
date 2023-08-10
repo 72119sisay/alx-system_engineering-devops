@@ -1,59 +1,70 @@
-#!/usr/bin/python3
-"""Query Reddit API to determine subreddit sub count
+
+dule parses titles of subreddits to count word occurances
 """
-
 import requests
+import re
 
 
-def count_words(subreddit, word_list, count_list=[], next_page=None):
-    """Request subreddit recursively using pagination
+def count_words(subreddit, word_list, after=None, word_dict={}):
+    """`count_words` populates `word_dict` with count of words
+
+    Args:
+        subreddit (str): Name of subreddit to query info
+        word_list (list, optional): List of words to search in subreddit
+        titles
+        after (str, optional): value of query string used to traverse
+        paginated json response
+        word_dict (dictionary, optional): Dictionary to hold repetition count
+        of words found in `word_list`
+
+    Returns:
+        None
     """
-    # convert word_list to dict with count
-    if not count_list:
-        for word in word_list:
-            count_list.append(dict({'keyword': word,
-                                    'count': 0}))
+    try:
+        if len(word_dict) != 0 and after is None:
+            return None
+        base_url = (
+            "https://www.reddit.com/r/{}/hot.json{}"
+            .format(
+                subreddit,
+                "?after="+after if after is not None else ""
+            )
+        )
+        res = requests.get(
+            base_url,
+            headers={"User-agent": "PostmanRuntime/7.28.4"},
+            allow_redirects=False
+        )
+        for child in res.json().get("data").get("children"):
+            search_list(
+                word_list,
+                word_dict,
+                child.get("data").get("title")
+            )
 
-    # NETWORKING
-    # set custom user-agent
-    user_agent = '0x16-api_advanced-jmajetich'
-    url = 'https://www.reddit.com/r/{}/hot.json'.format(subreddit)
-    # if page specified, pass as parameter
-    if next_page:
-        url += '?after={}'.format(next_page)
+        after = res.json().get("data").get("after")
+        count_words(subreddit, word_dict, after, word_dict)
+        if len(word_dict) != 0:
+            for k, v in word_dict.items():
+                print("{}: {}".format(k, v))
+            word_dict.clear()
+    except Exception as e:
+        return None
 
-    headers = {'User-Agent': user_agent}
 
-    r = requests.get(url, headers=headers, allow_redirects=False)
+def search_list(word_list, word_dict, title):
+    """Search `title` for words in `word_list` and populate `word_dict`
 
-    if r.status_code != 200:
-        return
-
-    # DATA PARSING
-    # load response unit from json
-    data = r.json()['data']
-
-    # extract list of pages
-    posts = data['children']
-    for post in posts:
-        title = post['data']['title']
-        for item in count_list:
-            title_lower = title.lower()
-            title_list = title_lower.split()
-            item['count'] += title_list.count(item['keyword'].lower())
-
-    next_page = data['after']
-    if next_page is not None:
-        return count_words(subreddit, word_list, count_list, next_page)
-    else:
-        # sort list by count
-        sorted_list = sorted(count_list,
-                             key=lambda word: (word['count'], word['keyword']),
-                             reverse=True)
-        keywords_matched = 0
-        # print keywords and counts
-        for word in sorted_list:
-            if word['count'] > 0:
-                print('{}: {}'.format(word['keyword'], word['count']))
-                keywords_matched += 1
-        return
+    Args:
+        word_list (list): List of words to search in subreddit
+        titles
+        word_dict (dictionary): Dictionary to hold repetition count
+        of words found in `word_list`
+        title (str): Subreddit title to be searched
+    """
+    for word in title.split():
+        if word.lower() in " ".join(word_list).lower().split():
+            if word_dict.get(word.lower()):
+                word_dict[word.lower()] += 1
+            else:
+                word_dict[word.lower()] = 1
