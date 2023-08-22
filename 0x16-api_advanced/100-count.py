@@ -1,54 +1,42 @@
-#!/usr/bin/python3
-""" raddit api"""
+mport requests
 
-import json
-import requests
-
-
-def count_words(subreddit, word_list, after="", count=[]):
-    """count all words"""
-
-    if after == "":
+def count_words(subreddit, word_list, after=None, count=None):
+    if after is None:
+        after = ""
         count = [0] * len(word_list)
 
-    url = "https://www.reddit.com/r/{}/hot.json".format(subreddit)
-    request = requests.get(url,
-                           params={'after': after},
-                           allow_redirects=False,
-                           headers={'user-agent': 'bhalut'})
+    url = f"https://www.reddit.com/r/{subreddit}/hot.json"
+    response = requests.get(url, params={'after': after}, allow_redirects=False, headers={'User-Agent': 'YourUserAgent'})
 
-    if request.status_code == 200:
-        data = request.json()
+    if response.status_code == 200:
+        data = response.json()
+        posts = data['data']['children']
 
-        for topic in (data['data']['children']):
-            for word in topic['data']['title'].split():
-                for i in range(len(word_list)):
-                    if word_list[i].lower() == word.lower():
-                        count[i] += 1
+        for post in posts:
+            title = post['data']['title'].lower()
+            for i, keyword in enumerate(word_list):
+                keyword_count = title.count(keyword.lower())
+                count[i] += keyword_count
 
         after = data['data']['after']
         if after is None:
-            save = []
-            for i in range(len(word_list)):
-                for j in range(i + 1, len(word_list)):
-                    if word_list[i].lower() == word_list[j].lower():
-                        save.append(j)
-                        count[i] += count[j]
+            combined_counts = {}
+            for word, c in zip(word_list, count):
+                word = word.lower()
+                if word not in combined_counts:
+                    combined_counts[word] = c
+                else:
+                    combined_counts[word] += c
 
-            for i in range(len(word_list)):
-                for j in range(i, len(word_list)):
-                    if (count[j] > count[i] or
-                            (word_list[i] > word_list[j] and
-                             count[j] == count[i])):
-                        aux = count[i]
-                        count[i] = count[j]
-                        count[j] = aux
-                        aux = word_list[i]
-                        word_list[i] = word_list[j]
-                        word_list[j] = aux
-
-            for i in range(len(word_list)):
-                if (count[i] > 0) and i not in save:
-                    print("{}: {}".format(word_list[i].lower(), count[i]))
+            sorted_counts = sorted(combined_counts.items(), key=lambda x: (-x[1], x[0]))
+            for word, c in sorted_counts:
+                print(f"{word}: {c}")
         else:
             count_words(subreddit, word_list, after, count)
+
+# Example usage
+subreddit = "unpopular"
+word_list = ["you", "unpopular", "vote", "down", "downvote", "her", "politics"]
+
+count_words(subreddit, word_list)
+
